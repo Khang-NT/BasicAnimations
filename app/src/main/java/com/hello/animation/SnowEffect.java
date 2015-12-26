@@ -8,7 +8,8 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.util.AttributeSet;
-import android.util.Log;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -28,12 +29,13 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
     private Paint paint;
     private List<SnowObject> snowObjects = new ArrayList<>();
     private Random random = new Random();
-    private float windSpeed;
+
     private boolean show;
     private final SurfaceHolder holder;
 
     private ThreadLoop paintThread;
 
+    private float minRadius, maxRadius, minFallSpeed, maxFallSpeed, windSpeed, windSpeedRange;
     private float lastX = -1;
 
     public SnowEffect(Context context, AttributeSet attributeSet) {
@@ -43,21 +45,34 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
             if (ta != null) {
                 snowColor = ta.getColor(R.styleable.SnowEffect_snowColor, 0xffffffff);
                 numSnowObjects = ta.getInt(R.styleable.SnowEffect_numSnowObjects, 20);
+                minRadius = ta.getDimension(R.styleable.SnowEffect_minRadius,
+                        dipToPixels(1.5f));
+                maxRadius = ta.getDimension(R.styleable.SnowEffect_maxRadius,
+                        dipToPixels(4.5f));
+                windSpeed = ta.getFloat(R.styleable.SnowEffect_windSpeed, random.nextInt(1) == 0 ? 1 : -1);
                 ta.recycle();
             }
+        } else {
+            minRadius = dipToPixels(1.5f);
+            maxRadius = dipToPixels(4.5f);
+            windSpeed = random.nextInt(1) == 0 ? 1 : -1;
         }
+
         paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(snowColor);
 
-        windSpeed = (random.nextInt(1) == 0 ? 1 : -1);
+
 
         paintThread = new PaintThread(UPDATE_INTERVAL);
 
 
         holder = getHolder();
-        setZOrderOnTop(true);
         holder.setFormat(PixelFormat.TRANSPARENT);
-        holder.addCallback(this);
+
+        if (!isInEditMode()) {
+            setZOrderOnTop(true);
+            holder.addCallback(this);
+        }
     }
 
     public void show(){
@@ -94,6 +109,11 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
         prepareSnowObjects();
     }
 
+    private float dipToPixels(float dipValue) {
+        DisplayMetrics metrics = getContext().getResources().getDisplayMetrics();
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dipValue, metrics);
+    }
+
     public void passGesture(MotionEvent event){
         if (event.getAction() == MotionEvent.ACTION_DOWN)
             lastX = event.getX();
@@ -101,10 +121,10 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
             float offset = (event.getX() - lastX) / 50f;
 
             lastX = event.getX();
-            if (windSpeed + offset > MAX_WIND_SPEED)
-                windSpeed = MAX_WIND_SPEED;
-            else if (windSpeed + offset < MIN_WIND_SPEED)
-                windSpeed = MIN_WIND_SPEED;
+            if (windSpeed + offset > windSpeedRange)
+                windSpeed = windSpeedRange;
+            else if (windSpeed + offset < -windSpeedRange)
+                windSpeed = -windSpeedRange;
             else
                 windSpeed += offset;
         }
@@ -123,23 +143,13 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
         }
     }
 
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        prepareSnowObjects();
-
-    }
-
     private void prepareSnowObjects(){
         if (snowObjects.size() < numSnowObjects) {
-            float maxSpeed = ((getHeight() / 18.0f) / 1000.f) * UPDATE_INTERVAL;
-            float minSpeed = (maxSpeed * 2) / 3.0f;
-            Log.e(TAG, "prepareSnowObjects: max " + maxSpeed + " min " + minSpeed );
             int width = getWidth();
             while (snowObjects.size() < numSnowObjects) {
                 snowObjects.add(
-                        new SnowObject(random.nextFloat() *(MAX_SPEED - MIN_SPEED) + MIN_SPEED,
-                                random.nextFloat()*7f + 4,
+                        new SnowObject(random.nextFloat() * (maxFallSpeed - minFallSpeed) + minFallSpeed,
+                                random.nextFloat() * (maxRadius - minRadius) + minRadius,
                                 random.nextInt(200) + 55,
                                 random.nextInt(width), 0,
                                 random.nextInt(1500)
@@ -155,13 +165,18 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        minFallSpeed = (getHeight() / 15000f) * UPDATE_INTERVAL;
+        maxFallSpeed = (getHeight() / 8000f) * UPDATE_INTERVAL;
+        windSpeedRange = maxFallSpeed;
         prepareSnowObjects();
         show();
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
+        minFallSpeed = (height / 15000f) * UPDATE_INTERVAL;
+        maxFallSpeed = (height / 8000f) * UPDATE_INTERVAL;
+        windSpeedRange = maxFallSpeed;
     }
 
     @Override
@@ -219,10 +234,10 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
                         if (snowObject.y > getHeight() || snowObject.x > getWidth()){
                             snowObject.x = random.nextInt(getWidth());
                             snowObject.y = 0;
-                            snowObject.fallSpeed = random.nextFloat()*(MAX_SPEED - MIN_SPEED) + MIN_SPEED;
+                            snowObject.fallSpeed = random.nextFloat() * (maxFallSpeed - minFallSpeed) + minFallSpeed;
                             snowObject.alpha = random.nextInt(200) + 55;
                             snowObject.startOffset = random.nextInt(1500);
-                            snowObject.radius = random.nextFloat()*7f + 4;
+                            snowObject.radius = random.nextFloat() * (maxRadius - minRadius) + minRadius;
                         } else {
                             snowObject.y += snowObject.fallSpeed;
                             snowObject.x += windSpeed;

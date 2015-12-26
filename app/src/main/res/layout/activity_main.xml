@@ -19,7 +19,7 @@
         <LinearLayout
             android:id="@+id/llContainer"
             android:layout_width="match_parent"
-            android:layout_height="300dp"
+            android:layout_height="@dimen/container"
             android:gravity="center"
             android:orientation="vertical">
 
@@ -41,7 +41,8 @@
 
             <android.support.v7.widget.AppCompatSpinner
                 android:id="@+id/spinnerInterpolator"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:padding="10dp" />
         </LinearLayout>
@@ -62,6 +63,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:numSnowObjects="30"
-        app:snowColor="#ffffff" />
+        app:snowColor="#ffffff"
+        app:minRadius="1dp"
+        app:maxRadius="4dp" />
 </FrameLayout>
 

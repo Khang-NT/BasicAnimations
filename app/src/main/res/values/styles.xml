@@ -11,6 +11,9 @@
     <declare-styleable name="SnowEffect">
         <attr name="snowColor" format="integer|color"/>
         <attr name="numSnowObjects" format="integer"/>
+        <attr name="minRadius" format="dimension" />
+        <attr name="maxRadius" format="dimension" />
+        <attr name="windSpeed" format="float" />
     </declare-styleable>
 
 </resources>

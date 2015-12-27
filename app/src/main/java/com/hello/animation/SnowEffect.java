@@ -9,7 +9,6 @@ import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -20,12 +19,12 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Created by Khang on 25/12/2015.
+ * Created on 25/12/2015.
+ * @author KHANG NT
  */
 public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
     private static final String TAG = "SnowEffect";
-    private static final int UPDATE_INTERVAL = 50;
-    private static final float MAX_SPEED = 8f, MIN_SPEED = 3.5f, MIN_WIND_SPEED = -4.5f, MAX_WIND_SPEED = 4.5f;
+    private static final int UPDATE_INTERVAL_DEFAULT = 50;
     private int snowColor = 0xffffffff, numSnowObjects = 20;
     private Paint paint;
     private List<SnowObject> snowObjects = new ArrayList<>();
@@ -38,6 +37,15 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
 
     private float minRadius, maxRadius, minFallSpeed, maxFallSpeed, windSpeed, windSpeedRange;
     private float lastX = -1;
+    private int updateInterval, numFPS;
+
+    /**
+     * ----------------------------Constructor----------------------------
+     */
+
+    public SnowEffect(Context context) {
+        this(context, null);
+    }
 
     public SnowEffect(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
@@ -51,20 +59,27 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
                 maxRadius = ta.getDimension(R.styleable.SnowEffect_maxRadius,
                         dipToPixels(4.5f));
                 windSpeed = ta.getFloat(R.styleable.SnowEffect_windSpeed, random.nextInt(1) == 0 ? 1 : -1);
+                numFPS = ta.getInt(R.styleable.SnowEffect_numFPS, -1);
+                if (numFPS == -1) {
+                    numFPS = 1000 / UPDATE_INTERVAL_DEFAULT;
+                    updateInterval = UPDATE_INTERVAL_DEFAULT;
+                } else {
+                    updateInterval = 1000 / numFPS;
+                }
                 ta.recycle();
             }
         } else {
             minRadius = dipToPixels(1.5f);
             maxRadius = dipToPixels(4.5f);
             windSpeed = random.nextInt(1) == 0 ? 1 : -1;
+            updateInterval = 1000 / numFPS;
         }
 
         paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(snowColor);
 
 
-
-        paintThread = new PaintThread(UPDATE_INTERVAL);
+        paintThread = new PaintThread(updateInterval);
 
 
         holder = getHolder();
@@ -75,6 +90,8 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
             holder.addCallback(this);
         }
     }
+
+    /**----------------------------Control functions----------------------------*/
 
     public void show(){
         this.show = true;
@@ -87,6 +104,29 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
         if (paintThread.isRunning())
             paintThread.stopAndJoin();
     }
+
+    /**
+     * Gesture swipe to change wind speed.
+     *
+     * @param event event data
+     */
+    public void passGesture(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN)
+            lastX = event.getX();
+        else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+            float offset = (event.getX() - lastX) / 50f;
+
+            lastX = event.getX();
+            if (windSpeed + offset > windSpeedRange)
+                windSpeed = windSpeedRange;
+            else if (windSpeed + offset < -windSpeedRange)
+                windSpeed = -windSpeedRange;
+            else
+                windSpeed += offset;
+        }
+    }
+
+    /**----------------------------Set - get methods.----------------------------*/
 
     public boolean isShowAnimation() {
         return show;
@@ -110,41 +150,30 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
         prepareSnowObjects();
     }
 
+    public void setNumFPS(int numFPS) {
+        this.numFPS = numFPS;
+        updateInterval = 1000 / numFPS;
+        paintThread.setUpdateInterval(updateInterval);
+        calculateFallSpeedRange();
+    }
+
+    public int getNumFPS() {
+        return numFPS;
+    }
+
+    /**----------------------------Private functions----------------------------*/
+
     private float dipToPixels(float dipValue) {
         DisplayMetrics metrics = getContext().getResources().getDisplayMetrics();
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dipValue, metrics);
     }
 
-    public void passGesture(MotionEvent event){
-        if (event.getAction() == MotionEvent.ACTION_DOWN)
-            lastX = event.getX();
-        else if (event.getAction() == MotionEvent.ACTION_MOVE){
-            float offset = (event.getX() - lastX) / 50f;
-
-            lastX = event.getX();
-            if (windSpeed + offset > windSpeedRange)
-                windSpeed = windSpeedRange;
-            else if (windSpeed + offset < -windSpeedRange)
-                windSpeed = -windSpeedRange;
-            else
-                windSpeed += offset;
-        }
+    private void calculateFallSpeedRange() {
+        minFallSpeed = (getHeight() / 20000f) * updateInterval;
+        maxFallSpeed = (getHeight() / 12000f) * updateInterval;
     }
 
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        if (canvas != null) {
-            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-            for (SnowObject snowObject : snowObjects) {
-                paint.setAlpha(snowObject.alpha);
-                canvas.drawCircle(snowObject.x, snowObject.y, snowObject.radius, paint);
-            }
-        }
-    }
-
-    private void prepareSnowObjects(){
+    private void prepareSnowObjects() {
         if (snowObjects.size() < numSnowObjects) {
             int width = getWidth();
             while (snowObjects.size() < numSnowObjects) {
@@ -165,10 +194,24 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        if (canvas != null) {
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            for (SnowObject snowObject : snowObjects) {
+                paint.setAlpha(snowObject.alpha);
+                canvas.drawCircle(snowObject.x, snowObject.y, snowObject.radius, paint);
+            }
+        }
+    }
+
+
+    /**----------------------------Surface callback functions----------------------------*/
+
+
+    @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        minFallSpeed = (getHeight() / 20000f) * UPDATE_INTERVAL;
-        maxFallSpeed = (getHeight() / 12000f) * UPDATE_INTERVAL;
-        Log.e(TAG, "Line 171 - surfaceCreated : min " + minFallSpeed + " max " + maxFallSpeed);
+        calculateFallSpeedRange();
         windSpeedRange = maxFallSpeed;
         prepareSnowObjects();
         show();
@@ -176,9 +219,7 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        minFallSpeed = (height / 20000f) * UPDATE_INTERVAL;
-        maxFallSpeed = (height / 12000f) * UPDATE_INTERVAL;
-        Log.e(TAG, "Line 171 - surfaceCreated : min " + minFallSpeed + " max " + maxFallSpeed);
+        calculateFallSpeedRange();
         windSpeedRange = maxFallSpeed;
     }
 
@@ -187,10 +228,9 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
         pause();
     }
 
-    @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-    }
+
+    /**----------------------------Private inner class----------------------------*/
+
 
     private class SnowObject {
         float fallSpeed;
@@ -259,44 +299,6 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
         }
     }
 
-//    private class CalculateThread extends ThreadLoop {
-//
-//        public CalculateThread(int updateInterval) {
-//            super(updateInterval);
-//        }
-//
-//        @Override
-//        public void run() {
-//            while (!reqStop){
-//                try {
-//                    Thread.sleep(updateInterval);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//                long calculateTime = SystemClock.currentThreadTimeMillis();
-//                for (SnowObject snowObject : snowObjects) {
-//                    if (snowObject.startOffset > 0)
-//                        snowObject.startOffset -= updateInterval;
-//                    else {
-//                        if (snowObject.y > getHeight() || snowObject.x > getWidth()){
-//                            snowObject.x = random.nextInt(getWidth());
-//                            snowObject.y = 0;
-//                            snowObject.fallSpeed = random.nextFloat()*2.5f + 2.5f;
-//                            snowObject.alpha = random.nextInt(256);
-//                            snowObject.startOffset = random.nextInt(1500);
-//                            snowObject.radius = random.nextFloat()*7f + 4;
-//                        } else {
-//                            snowObject.y += snowObject.fallSpeed;
-//                            snowObject.x += windSpeed;
-//                        }
-//                    }
-//                }
-//                calculateTime = SystemClock.currentThreadTimeMillis() - calculateTime;
-//                Log.e(TAG, "run: calculate time: " + calculateTime );
-//            }
-//        }
-//    }
-
     private abstract class ThreadLoop implements Runnable {
         protected Thread thread;
         protected boolean reqStop = true;
@@ -323,6 +325,10 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
 
         public boolean isRunning() {
             return !reqStop;
+        }
+
+        public void setUpdateInterval(int updateInterval) {
+            this.updateInterval = updateInterval;
         }
     }
 }

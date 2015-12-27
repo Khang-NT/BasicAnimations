@@ -14,6 +14,9 @@
         <attr name="minRadius" format="dimension" />
         <attr name="maxRadius" format="dimension" />
         <attr name="windSpeed" format="float" />
+        <!-- Number of frame per second.
+            @param numFPS Recommend set at least 10 FPS-->
+        <attr name="numFPS" format="integer" />
     </declare-styleable>
 
 </resources>

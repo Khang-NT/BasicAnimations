@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#ffd7d5">
+    android:layout_height="match_parent">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -54,7 +53,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="20dp"
-            android:text="STart" />
+            android:text="@string/start" />
 
     </LinearLayout>
 
@@ -63,8 +62,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:numSnowObjects="30"
-        app:snowColor="#ffffff"
         app:minRadius="1dp"
-        app:maxRadius="4dp" />
+        app:maxRadius="4dp"
+        app:numFPS="30"
+        app:snowColor="#ffd7d5" />
 </FrameLayout>
 

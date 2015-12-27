@@ -9,6 +9,7 @@ import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -23,7 +24,7 @@ import java.util.Random;
  */
 public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
     private static final String TAG = "SnowEffect";
-    private static final int UPDATE_INTERVAL = 70;
+    private static final int UPDATE_INTERVAL = 50;
     private static final float MAX_SPEED = 8f, MIN_SPEED = 3.5f, MIN_WIND_SPEED = -4.5f, MAX_WIND_SPEED = 4.5f;
     private int snowColor = 0xffffffff, numSnowObjects = 20;
     private Paint paint;
@@ -165,8 +166,9 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        minFallSpeed = (getHeight() / 15000f) * UPDATE_INTERVAL;
-        maxFallSpeed = (getHeight() / 8000f) * UPDATE_INTERVAL;
+        minFallSpeed = (getHeight() / 20000f) * UPDATE_INTERVAL;
+        maxFallSpeed = (getHeight() / 12000f) * UPDATE_INTERVAL;
+        Log.e(TAG, "Line 171 - surfaceCreated : min " + minFallSpeed + " max " + maxFallSpeed);
         windSpeedRange = maxFallSpeed;
         prepareSnowObjects();
         show();
@@ -174,8 +176,9 @@ public class SnowEffect extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        minFallSpeed = (height / 15000f) * UPDATE_INTERVAL;
-        maxFallSpeed = (height / 8000f) * UPDATE_INTERVAL;
+        minFallSpeed = (height / 20000f) * UPDATE_INTERVAL;
+        maxFallSpeed = (height / 12000f) * UPDATE_INTERVAL;
+        Log.e(TAG, "Line 171 - surfaceCreated : min " + minFallSpeed + " max " + maxFallSpeed);
         windSpeedRange = maxFallSpeed;
     }
 
